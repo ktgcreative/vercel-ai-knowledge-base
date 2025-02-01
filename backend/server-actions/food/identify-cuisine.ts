@@ -3,20 +3,27 @@
 import { callVercelAi } from '@/backend/lib/ai/vercel-call-factory';
 import { getValidateFoodTool } from './tools/validate-food';
 import { getCuisineIdentifierTool } from './tools/cuisine-identifier';
+import { getTimelineGeneratorTool } from './tools/generate-timeline';
 
 export async function identifyCuisine(dish: string) {
     try {
         console.log('📝 Starting cuisine identification for:', dish);
         const validateTool = await getValidateFoodTool();
         const cuisineIdentifierTool = await getCuisineIdentifierTool();
+        const timelineTool = await getTimelineGeneratorTool();
 
         const { toolCalls } = await callVercelAi({
             tools: {
                 validate: validateTool,
-                analyze: cuisineIdentifierTool
+                analyze: cuisineIdentifierTool,
+                timeline: timelineTool,
             },
             maxSteps: 5,
-            prompt: `Analyze this dish: "${dish}". First validate if it's a legitimate food, then analyze its culinary background. Be thorough and precise.`
+            prompt: `Analyze this dish: "${dish}". Follow these steps:
+                1. First validate if it's a legitimate food
+                2. Then analyze its culinary background
+                3. Finally, generate a comprehensive historical timeline with at least 5 significant years showing the dish's evolution and cultural impact through history.
+                Be thorough and precise, ensuring the timeline covers different periods from the dish's origin to modern times.`
         });
 
         if (!toolCalls?.length) {

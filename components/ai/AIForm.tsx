@@ -2,6 +2,7 @@
 
 import { ReactNode, useState } from 'react';
 import { identifyCuisine } from '@/backend/server-actions/food/identify-cuisine';
+import { Timeline } from './Timeline';
 
 interface AIFormProps {
     inputPlaceholder?: string;
@@ -17,7 +18,7 @@ export function AIForm({
     defaultValue = "",
 }: AIFormProps) {
     const [isLoading, setIsLoading] = useState(false);
-    const [result, setResult] = useState<object | null>(null);
+    const [result, setResult] = useState<any | null>(null);
     const [error, setError] = useState('');
     const [dish, setDish] = useState(defaultValue);
 
@@ -32,7 +33,22 @@ export function AIForm({
             if (response.error) {
                 setError(response.error);
             } else if (response.toolCalls) {
-                setResult(response.toolCalls);
+                const validationCall = response.toolCalls.find(
+                    (call: any) => call.toolName === 'validate'
+                );
+                const analysisCall = response.toolCalls.find(
+                    (call: any) => call.toolName === 'analyze'
+                );
+                const timelineCall = response.toolCalls.find(
+                    (call: any) => call.toolName === 'timeline'
+                );
+
+                setResult({
+                    validation: validationCall?.args,
+                    analysis: analysisCall?.args,
+                    timeline: timelineCall?.args?.timelineEntries || [],
+                    summary: timelineCall?.args?.summary || ''
+                });
             }
         } catch (err) {
             setError(err instanceof Error ? err.message : 'An unknown error occurred');
@@ -42,7 +58,7 @@ export function AIForm({
     };
 
     return (
-        <div className="flex flex-col items-center w-full max-w-2xl mx-auto">
+        <div className="flex flex-col items-center w-full max-w-4xl mx-auto">
             <form
                 onSubmit={handleSubmit}
                 className="flex flex-col mb-10 sm:flex-row gap-2 items-center justify-center w-full"
@@ -65,16 +81,65 @@ export function AIForm({
             </form>
 
             {error && (
-                <div className="text-red-600 mb-4">
+                <div className="text-error mb-4">
                     {error}
                 </div>
             )}
 
             {result && (
-                <div className="mockup-code">
-                    <pre className="whitespace-pre-wrap font-mono text-sm max-w-2xl">
-                        {JSON.stringify(result, null, 2)}
-                    </pre>
+                <div className="w-full space-y-8">
+                    {/* Validation Section */}
+                    {result.validation && (
+                        <div className="card bg-base-200">
+                            <div className="card-body">
+                                <h2 className="card-title">Dish Validation</h2>
+                                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                    <div>
+                                        <p><span className="font-bold">Type:</span> {result.validation.validation.cuisineType}</p>
+                                        <p><span className="font-bold">Category:</span> {result.validation.validation.category}</p>
+                                        <p><span className="font-bold">Confidence:</span> {result.validation.validation.confidence}</p>
+                                    </div>
+                                    <div>
+                                        <p className="font-bold">Dietary Information:</p>
+                                        <ul className="list-disc list-inside">
+                                            {result.validation.validation.dietaryInfo.containsAllergens?.map((allergen: string) => (
+                                                <li key={allergen}>{allergen}</li>
+                                            ))}
+                                        </ul>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    )}
+
+                    {/* Analysis Section */}
+                    {result.analysis && (
+                        <div className="card bg-base-200">
+                            <div className="card-body">
+                                <h2 className="card-title">Culinary Analysis</h2>
+                                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                    <div>
+                                        <p><span className="font-bold">Primary Cuisine:</span> {result.analysis.analysis.primaryCuisine}</p>
+                                        <p><span className="font-bold">Regional Variant:</span> {result.analysis.analysis.regionalVariant}</p>
+                                        <p><span className="font-bold">Authenticity:</span> {result.analysis.analysis.authenticity}</p>
+                                    </div>
+                                    <div>
+                                        <p className="font-bold">Characteristics:</p>
+                                        <p><span className="font-bold">Spice Level:</span> {result.analysis.analysis.characteristics.spiceLevel}</p>
+                                        <p><span className="font-bold">Serving Style:</span> {result.analysis.analysis.characteristics.servingStyle}</p>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    )}
+
+                    {/* Timeline Section */}
+                    {result.timeline && result.timeline.length > 0 && (
+                        <Timeline
+                            entries={result.timeline}
+                            summary={result.summary}
+                        />
+                    )}
                 </div>
             )}
         </div>
