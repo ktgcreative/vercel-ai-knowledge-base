@@ -1,6 +1,6 @@
 'use server';
 
-import { callVercelAi } from '@/backend/lib/ai/vercel-call-factory';
+import { callOpenAi } from '@/backend/lib/ai';
 import { getValidateFoodTool } from './tools/validate-food';
 import { getCuisineIdentifierTool } from './tools/cuisine-identifier';
 import { getTimelineGeneratorTool } from './tools/generate-timeline';
@@ -12,7 +12,7 @@ export async function identifyCuisine(dish: string) {
         const cuisineIdentifierTool = await getCuisineIdentifierTool();
         const timelineTool = await getTimelineGeneratorTool();
 
-        const { toolCalls } = await callVercelAi({
+        const { toolCalls } = await callOpenAi({
             tools: {
                 validate: validateTool,
                 analyze: cuisineIdentifierTool,

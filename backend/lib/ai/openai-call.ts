@@ -1,10 +1,19 @@
 'use server';
 
 import { generateText, Tool, LanguageModelV1 } from 'ai';
-import { openai } from '@ai-sdk/openai';
+import { createOpenAI } from '@ai-sdk/openai';
 
-export interface VercelAiCallOptions {
-    model?: LanguageModelV1;
+if (!process.env.OPENAI_API_KEY) {
+    throw new Error('Missing OPENAI_API_KEY environment variable');
+}
+
+// Create OpenAI instance with API key
+const openaiInstance = createOpenAI({
+    apiKey: process.env.OPENAI_API_KEY
+});
+
+export interface OpenAiCallOptions {
+    model?: string;
     tools?: Record<string, Tool>;
     maxSteps?: number;
     toolChoice?: 'auto' | 'none' | 'required';
@@ -12,12 +21,12 @@ export interface VercelAiCallOptions {
 }
 
 // callVercelAi wraps the Vercel AI generateText call with standardized logging & error handling.
-export async function callVercelAi(options: VercelAiCallOptions) {
-    const defaultModel = openai('gpt-4o-mini') as LanguageModelV1;
+export async function callOpenAi(options: OpenAiCallOptions) {
+    const model = openaiInstance(options.model ?? 'gpt-4o-mini') as LanguageModelV1;
     console.log('💡 Starting Vercel AI call with options:', options);
     try {
         const result = await generateText({
-            model: options.model ?? defaultModel,
+            model,
             tools: options.tools,
             maxSteps: options.maxSteps ?? 5,
             toolChoice: options.toolChoice ?? 'required',
