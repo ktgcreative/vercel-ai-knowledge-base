@@ -1,6 +1,7 @@
 'use server';
 
 import { callOpenAi } from '@/backend/lib/ai';
+import { performPerplexitySearch } from '../search/perplexity-search';
 import { getValidateFoodTool } from './tools/validate-food';
 import { getCuisineIdentifierTool } from './tools/cuisine-identifier';
 import { getTimelineGeneratorTool } from './tools/generate-timeline';
@@ -8,6 +9,12 @@ import { getTimelineGeneratorTool } from './tools/generate-timeline';
 export async function identifyCuisine(dish: string) {
     try {
         console.log('📝 Starting cuisine identification for:', dish);
+
+        // First, perform a web search to gather current information
+        const searchResponse = await performPerplexitySearch(
+            `What is the origin, cultural significance, and history of ${dish}? Include details about its cuisine type and evolution over time.`
+        );
+
         const validateTool = await getValidateFoodTool();
         const cuisineIdentifierTool = await getCuisineIdentifierTool();
         const timelineTool = await getTimelineGeneratorTool();
@@ -19,11 +26,16 @@ export async function identifyCuisine(dish: string) {
                 timeline: timelineTool,
             },
             maxSteps: 5,
-            prompt: `Analyze this dish: "${dish}". Follow these steps:
+            prompt: `Analyze this dish: "${dish}". Use this additional research information: ${searchResponse.text}
+
+                Follow these steps:
                 1. First validate if it's a legitimate food
                 2. Then analyze its culinary background
                 3. Finally, generate a comprehensive historical timeline with at least 5 significant years showing the dish's evolution and cultural impact through history.
-                Be thorough and precise, ensuring the timeline covers different periods from the dish's origin to modern times.`
+                
+                Be thorough and precise, ensuring the timeline covers different periods from the dish's origin to modern times.
+                
+                Base your analysis on both the provided research and your knowledge.`
         });
 
         if (!toolCalls?.length) {
@@ -34,7 +46,11 @@ export async function identifyCuisine(dish: string) {
         console.log('Raw Tool Calls:', JSON.stringify(toolCalls, null, 2));
 
         return {
-            toolCalls
+            toolCalls,
+            searchResults: {
+                text: searchResponse.text,
+                citations: searchResponse.citations
+            }
         };
     } catch (error) {
         console.error('❌ Error in cuisine identification:', error);

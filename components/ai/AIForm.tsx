@@ -12,21 +12,32 @@ interface AIFormProps {
     className?: string;
 }
 
+interface SearchResults {
+    text: string;
+    citations: Array<{
+        url: string;
+        title?: string;
+    }>;
+}
+
 export function AIForm({
     inputPlaceholder = "Enter your query",
     inputName = "query",
     defaultValue = "",
 }: AIFormProps) {
     const [isLoading, setIsLoading] = useState(false);
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const [result, setResult] = useState<any | null>(null);
     const [error, setError] = useState('');
     const [dish, setDish] = useState(defaultValue);
+    const [searchResults, setSearchResults] = useState<SearchResults | null>(null);
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
         setIsLoading(true);
         setError('');
         setResult(null);
+        setSearchResults(null);
 
         try {
             const response = await identifyCuisine(dish);
@@ -34,12 +45,15 @@ export function AIForm({
                 setError(response.error);
             } else if (response.toolCalls) {
                 const validationCall = response.toolCalls.find(
+                    // eslint-disable-next-line @typescript-eslint/no-explicit-any
                     (call: any) => call.toolName === 'validate'
                 );
                 const analysisCall = response.toolCalls.find(
+                    // eslint-disable-next-line @typescript-eslint/no-explicit-any
                     (call: any) => call.toolName === 'analyze'
                 );
                 const timelineCall = response.toolCalls.find(
+                    // eslint-disable-next-line @typescript-eslint/no-explicit-any
                     (call: any) => call.toolName === 'timeline'
                 );
 
@@ -49,6 +63,9 @@ export function AIForm({
                     timeline: timelineCall?.args?.timelineEntries || [],
                     summary: timelineCall?.args?.summary || ''
                 });
+
+                // Set the search results
+                setSearchResults(response.searchResults);
             }
         } catch (err) {
             setError(err instanceof Error ? err.message : 'An unknown error occurred');
@@ -88,6 +105,39 @@ export function AIForm({
 
             {result && (
                 <div className="w-full space-y-8">
+                    {/* Web Search Results Section */}
+                    {searchResults && (
+                        <div className="card bg-base-200">
+                            <div className="card-body">
+                                <h2 className="card-title">Web Research</h2>
+                                <div className="prose max-w-none">
+                                    <div className="whitespace-pre-wrap">{searchResults.text}</div>
+
+                                    {searchResults.citations?.length > 0 && (
+                                        <div className="mt-6 border-t pt-4">
+                                            <h3 className="text-lg font-semibold mb-3">Sources</h3>
+                                            <ul className="space-y-2">
+                                                {searchResults.citations.map((citation, index) => (
+                                                    <li key={index} className="flex items-start">
+                                                        <span className="mr-2 text-base-content/70">[{index + 1}]</span>
+                                                        <a
+                                                            href={citation.url}
+                                                            target="_blank"
+                                                            rel="noopener noreferrer"
+                                                            className="text-primary hover:underline break-all"
+                                                        >
+                                                            {citation.title || citation.url}
+                                                        </a>
+                                                    </li>
+                                                ))}
+                                            </ul>
+                                        </div>
+                                    )}
+                                </div>
+                            </div>
+                        </div>
+                    )}
+
                     {/* Validation Section */}
                     {result.validation && (
                         <div className="card bg-base-200">
