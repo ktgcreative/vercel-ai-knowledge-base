@@ -19,6 +19,7 @@ export async function getValidateFoodTool() {
                         'Beverage',
                         'Snack',
                         'Breakfast',
+                        'Soup',
                         'Unknown'
                     ])
                     .describe('Category of the food item'),

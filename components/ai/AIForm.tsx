@@ -1,7 +1,7 @@
 'use client';
 
 import { ReactNode, useState } from 'react';
-import { identifyCuisine } from '@/backend/server-actions/food/identify-cuisine';
+import { identifyCuisine } from '@/backend/server-actions/food/identifyCuisine';
 import { Timeline } from './Timeline';
 
 interface AIFormProps {
@@ -61,7 +61,9 @@ export function AIForm({
                     validation: validationCall?.args,
                     analysis: analysisCall?.args,
                     timeline: timelineCall?.args?.timelineEntries || [],
-                    summary: timelineCall?.args?.summary || ''
+                    summary: timelineCall?.args?.summary || '',
+                    recipe: response.recipe,
+                    originAnalysis: response.originAnalysis
                 });
 
                 // Set the search results
@@ -110,11 +112,32 @@ export function AIForm({
                         <div className="card bg-base-200">
                             <div className="card-body">
                                 <h2 className="card-title">Web Research</h2>
-                                <div className="prose max-w-none">
-                                    <div className="whitespace-pre-wrap">{searchResults.text}</div>
+                                <div className="prose prose-base prose-slate">
+                                    {/* Split the text into paragraphs and map them */}
+                                    {searchResults.text.split('\n\n').map((paragraph, index) => {
+                                        const trimmedParagraph = paragraph.trim();
+                                        if (!trimmedParagraph) return null;
+
+                                        // Handle different paragraph types
+                                        const formattedText = trimmedParagraph
+                                            // Replace markdown bold syntax with spans
+                                            .replace(/\*\*(.*?)\*\*/g, '<span class="font-bold">$1</span>')
+                                            // Replace markdown lists with proper HTML
+                                            .replace(/- /g, '• ');
+
+                                        return (
+                                            <div key={index}>
+                                                {trimmedParagraph.startsWith('###') ? (
+                                                    <h3>{trimmedParagraph.replace('###', '').trim()}</h3>
+                                                ) : (
+                                                    <p dangerouslySetInnerHTML={{ __html: formattedText }} />
+                                                )}
+                                            </div>
+                                        );
+                                    })}
 
                                     {searchResults.citations?.length > 0 && (
-                                        <div className="mt-6 border-t pt-4">
+                                        <div className="not-prose mt-6 border-t pt-4">
                                             <h3 className="text-lg font-semibold mb-3">Sources</h3>
                                             <ul className="space-y-2">
                                                 {searchResults.citations.map((citation, index) => (
@@ -189,6 +212,65 @@ export function AIForm({
                             entries={result.timeline}
                             summary={result.summary}
                         />
+                    )}
+
+                    {/* Origin Analysis Section */}
+                    {result.originAnalysis && Object.keys(result.originAnalysis).length > 0 && (
+                        <div className="card bg-base-200">
+                            <div className="card-body">
+                                <h2 className="card-title">Origin Analysis</h2>
+                                <p><span className="font-bold">Native Region:</span> {result.originAnalysis.nativeRegion}</p>
+                                <p><span className="font-bold">Historical Context:</span> {result.originAnalysis.historicalContext}</p>
+                                {result.originAnalysis.folklore && (
+                                    <p><span className="font-bold">Folklore:</span> {result.originAnalysis.folklore}</p>
+                                )}
+                                <p><span className="font-bold">Cultural Significance:</span> {result.originAnalysis.culturalSignificance}</p>
+                                {result.originAnalysis.evolution && result.originAnalysis.evolution.length > 0 && (
+                                    <div>
+                                        <h3 className="text-lg font-semibold mt-4">Evolution:</h3>
+                                        <ul className="list-disc list-inside">
+                                            {result.originAnalysis.evolution.map((period: { period: string; description: string; impact: string }, index: number) => (
+                                                <li key={index}>
+                                                    <span className="font-bold">{period.period}:</span> {period.description} (<i>{period.impact}</i>)
+                                                </li>
+                                            ))}
+                                        </ul>
+                                    </div>
+                                )}
+                            </div>
+                        </div>
+                    )}
+
+                    {/* Recipe Section */}
+                    {result.recipe && Object.keys(result.recipe).length > 0 && (
+                        <div className="card bg-base-200">
+                            <div className="card-body">
+                                <h2 className="card-title">Recipe</h2>
+                                {result.recipe.description && (
+                                    <p>{result.recipe.description}</p>
+                                )}
+                                <h3 className="text-lg font-semibold mt-4">Ingredients:</h3>
+                                <ul className="list-disc list-inside">
+                                    {result.recipe.ingredients && result.recipe.ingredients.map((ing: { name: string; quantity: string; unit: string; preparation?: string }, idx: number) => (
+                                        <li key={idx}>
+                                            {ing.name}: {ing.quantity} {ing.unit} {ing.preparation ? `(${ing.preparation})` : ''}
+                                        </li>
+                                    ))}
+                                </ul>
+                                <h3 className="text-lg font-semibold mt-4">Steps:</h3>
+                                <ol className="list-decimal list-inside">
+                                    {result.recipe.steps && result.recipe.steps.map((step: string, idx: number) => (
+                                        <li key={idx}>{step}</li>
+                                    ))}
+                                </ol>
+                                {result.recipe.cookingTime && (
+                                    <p className="mt-2"><span className="font-bold">Cooking Time:</span> {result.recipe.cookingTime} minutes</p>
+                                )}
+                                {result.recipe.servings && (
+                                    <p><span className="font-bold">Servings:</span> {result.recipe.servings}</p>
+                                )}
+                            </div>
+                        </div>
                     )}
                 </div>
             )}

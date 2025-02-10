@@ -1,6 +1,6 @@
 'use server';
 
-import { callPerplexity } from '@/backend/lib/ai';
+import { callPerplexity } from '@/backend/services/ai';
 
 export interface SearchResponse {
     text: string;
@@ -14,7 +14,7 @@ export async function performPerplexitySearch(query: string): Promise<SearchResp
     try {
         const response = await callPerplexity({
             prompt: query,
-            model: 'sonar-pro'
+            model: 'sonar-reasoning-pro'
         });
 
         // Extract and type-check citations
